@@ -30,8 +30,8 @@ jobs:
           s = p.read_text()
           s = s.replace("const payload=plan.type==='emi'?", "const payload:any=plan.type==='emi'?")
           s = s.replace(".map(a=>a.member_id)", ".map((a:any)=>a.member_id)", 1)
-          s = re.sub(r'\.(map|filter|find|forEach)\(\s*([A-Za-z_$][\\w$]*)\s*=>', r'.\1((\2:any)=>', s)
-          s = re.sub(r'\.reduce\(\(\s*([A-Za-z_$][\\w$]*)\s*,\s*([A-Za-z_$][\\w$]*)\s*\)\s*=>', r'.reduce((\1:any,\2:any)=>', s)
+          s = re.sub(r'\.(map|filter|find|forEach)\(\s*([A-Za-z_$][\w$]*)\s*=>', r'.\1((\2:any)=>', s)
+          s = re.sub(r'\.reduce\(\(\s*([A-Za-z_$][\w$]*)\s*,\s*([A-Za-z_$][\w$]*)\s*\)\s*=>', r'.reduce((\1:any,\2:any)=>', s)
           p.write_text(s)
           PY
       - name: Build
