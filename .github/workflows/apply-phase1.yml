@@ -1,0 +1,49 @@
+name: Apply Ledgerly Phase 1
+
+on:
+  push:
+    branches:
+      - ledgerly-phase1-fixes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ledgerly-phase1-fixes
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Apply Phase 1 source patch
+        run: python3 scripts/phase1_apply.py
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npx next build
+
+      - name: Commit Phase 1 source changes
+        run: |
+          if git diff --quiet -- app/page.tsx; then
+            echo 'No Phase 1 source changes to commit.'
+            exit 0
+          fi
+          git config user.name 'ledgerly-phase1-bot'
+          git config user.email 'ledgerly-phase1-bot@users.noreply.github.com'
+          git add app/page.tsx
+          git commit -m 'fix: preserve split modes and balance transfers loans'
+          git push origin ledgerly-phase1-fixes
