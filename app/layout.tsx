@@ -1,4 +1,6 @@
 import './globals.css';
 import type { ReactNode } from 'react';
+import AuthGate from './AuthGate';
 export const metadata={title:'Ledgerly — Family Expense Manager',description:'Shared family expenses, settlements and budgets.'};
-export default function RootLayout({children}:{children:ReactNode}){return <html lang="en-IN"><body>{children}</body></html>}
+export const viewport={width:'device-width',initialScale:1,viewportFit:'cover'};
+export default function RootLayout({children}:{children:ReactNode}){return <html lang="en-IN"><body><AuthGate>{children}</AuthGate></body></html>}
