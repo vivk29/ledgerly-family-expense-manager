@@ -11,8 +11,8 @@ export default function LedgerlyInteractionPatch(){
       const add=t.closest('.addFab') as HTMLElement|null;
       const navAdd=t.closest('.bottomNav button:nth-child(3)') as HTMLElement|null;
       if(add||navAdd){e.preventDefault();e.stopPropagation();setOpen(v=>!v);return;}
+      if(t.closest('.menu')){setTimeout(closeTopMenu,0);return;}
       if(open && !t.closest('.ledgerly-global-add'))setOpen(false);
-      if(t.closest('.menu')||t.closest('.dots')||t.closest('.ledgerly-global-add'))return;
       closeTopMenu();
     };
     const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpen(false);closeTopMenu();}};
