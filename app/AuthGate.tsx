@@ -16,13 +16,29 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    const recoveryInUrl = new URLSearchParams(window.location.search).get('recovery') === '1';
-    supabase.auth.getSession().then(({ data }) => {
+    const url = new URL(window.location.href);
+    const hasRecoveryHash = url.hash.includes('type=recovery') || url.hash.includes('access_token=');
+    const hasRecoveryFlag = url.searchParams.get('recovery') === '1';
+    const recoveryCode = url.searchParams.get('code');
+
+    const finishReady = (nextSession: any) => {
       if (!active) return;
-      setSession(data.session);
-      if (recoveryInUrl) setMode('reset');
+      setSession(nextSession);
+      if (hasRecoveryFlag || hasRecoveryHash || !!recoveryCode) setMode('reset');
       setReady(true);
-    });
+    };
+
+    const start = async () => {
+      if (recoveryCode) {
+        const { data } = await supabase.auth.exchangeCodeForSession(recoveryCode);
+        finishReady(data?.session || null);
+      } else {
+        const { data } = await supabase.auth.getSession();
+        finishReady(data.session);
+      }
+    };
+    start();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
       if (!active) return;
       setSession(next);
@@ -65,7 +81,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.updateUser({ password });
     setBusy(false);
     if (error) { setMessage(error.message); return; }
-    setPassword(''); setPassword2(''); setMessage('Password updated successfully.');
+    await supabase.auth.signOut();
+    setPassword(''); setPassword2(''); setMode('login'); setMessage('Password updated successfully. You can now log in with your new password.');
   }
 
   if (!ready) return <div style={overlay}><div style={card}><div style={logo}>₹</div><h2 style={{ margin: 0 }}>Ledgerly</h2><p style={muted}>Checking your secure session…</p></div></div>;
@@ -87,20 +104,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       {mode === 'forgot' && <form onSubmit={forgot} style={form}><label style={label}>Email<input style={input} type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" /></label><button style={primary} disabled={busy}>{busy ? 'Sending…' : 'Send reset email'}</button></form>}
       {mode === 'reset' && <form onSubmit={reset} style={form}><label style={label}>New password<input style={input} type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" /></label><label style={label}>Confirm new password<input style={input} type="password" required minLength={6} value={password2} onChange={e => setPassword2(e.target.value)} autoComplete="new-password" /></label><button style={primary} disabled={busy}>{busy ? 'Updating…' : 'Update password'}</button></form>}
       {message && <div style={notice}>{message}</div>}
-      {mode === 'reset' && message === 'Password updated successfully.' && <button type="button" onClick={() => { setMode('login'); setMessage('You can now log in with your new password.'); }} style={{ ...primary, marginTop: 12, width: '100%' }}>Continue to login</button>}
     </div>
   </div>;
 }
 
-const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, background: 'linear-gradient(135deg,#f4f6f9,#eaf1fc)' };
-const card: React.CSSProperties = { width: 'min(440px,100%)', background: '#fff', border: '1px solid #e2e6ec', borderRadius: 22, padding: 24, boxShadow: '0 20px 60px #17203322', color: '#111827' };
+const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, background: 'var(--bg)' };
+const card: React.CSSProperties = { width: 'min(440px,100%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: 24, boxShadow: '0 20px 60px var(--shadow)', color: 'var(--text)' };
 const brand: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10 };
-const logo: React.CSSProperties = { width: 44, height: 44, display: 'grid', placeItems: 'center', borderRadius: 13, background: '#2454a6', color: '#fff', fontWeight: 900, fontSize: 20 };
-const muted: React.CSSProperties = { color: '#667085', lineHeight: 1.5 };
-const tabs: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, padding: 4, background: '#eef2f7', borderRadius: 12, margin: '18px 0' };
-const tab = (on: boolean): React.CSSProperties => ({ border: 0, borderRadius: 9, padding: 10, fontWeight: 800, background: on ? '#fff' : 'transparent', color: on ? '#2454a6' : '#667085' });
+const logo: React.CSSProperties = { width: 44, height: 44, display: 'grid', placeItems: 'center', borderRadius: 13, background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 900, fontSize: 20 };
+const muted: React.CSSProperties = { color: 'var(--muted)', lineHeight: 1.5 };
+const tabs: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, padding: 4, background: 'var(--seg-bg)', borderRadius: 12, margin: '18px 0' };
+const tab = (on: boolean): React.CSSProperties => ({ border: 0, borderRadius: 9, padding: 10, fontWeight: 800, background: on ? 'var(--surface)' : 'transparent', color: on ? 'var(--accent)' : 'var(--muted)' });
 const form: React.CSSProperties = { display: 'grid', gap: 12, marginTop: 18 };
 const label: React.CSSProperties = { display: 'grid', gap: 7, fontSize: 13, fontWeight: 800 };
-const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: '1px solid #d6dce4', borderRadius: 12, padding: 12, background: '#fbfcfe', color: '#111827' };
-const primary: React.CSSProperties = { border: 0, borderRadius: 12, padding: 12, background: '#2454a6', color: '#fff', fontWeight: 900 };
-const notice: React.CSSProperties = { marginTop: 14, padding: 11, borderRadius: 12, background: '#e8f1fb', border: '1px solid #c6dcf5', color: '#215a9c', fontSize: 13 };
+const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: '1px solid var(--input-border)', borderRadius: 12, padding: 12, background: 'var(--input-bg)', color: 'var(--text)' };
+const primary: React.CSSProperties = { border: 0, borderRadius: 12, padding: 12, background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 900 };
+const notice: React.CSSProperties = { marginTop: 14, padding: 11, borderRadius: 12, background: 'var(--notice-bg)', border: '1px solid var(--notice-border)', color: 'var(--notice-text)', fontSize: 13 };
