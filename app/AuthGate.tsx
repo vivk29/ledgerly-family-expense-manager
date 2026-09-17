@@ -1,0 +1,99 @@
+'use client';
+
+import { FormEvent, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+
+export default function AuthGate({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const [session, setSession] = useState<any>(null);
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'reset'>('login');
+  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setReady(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next);
+      setReady(true);
+      if (event === 'PASSWORD_RECOVERY') setMode('reset');
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function login(e: FormEvent) {
+    e.preventDefault(); setBusy(true); setMessage('');
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    setBusy(false); if (error) setMessage(error.message);
+  }
+
+  async function register(e: FormEvent) {
+    e.preventDefault(); setBusy(true); setMessage('');
+    if (password.length < 6) { setBusy(false); setMessage('Password must be at least 6 characters.'); return; }
+    if (password !== password2) { setBusy(false); setMessage('Passwords do not match.'); return; }
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(), password,
+      options: { data: { full_name: fullName.trim() }, emailRedirectTo: window.location.origin }
+    });
+    setBusy(false);
+    if (error) { setMessage(error.message); return; }
+    if (data.session) setMessage('Account created. You are signed in.');
+    else { setMode('login'); setMessage('Account created. Check your email to confirm your account, then log in.'); }
+  }
+
+  async function forgot(e: FormEvent) {
+    e.preventDefault(); setBusy(true); setMessage('');
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+    setBusy(false); setMessage(error?.message || 'Password reset email sent.');
+  }
+
+  async function reset(e: FormEvent) {
+    e.preventDefault(); setBusy(true); setMessage('');
+    if (password.length < 6 || password !== password2) { setBusy(false); setMessage('Enter matching passwords of at least 6 characters.'); return; }
+    const { error } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (error) setMessage(error.message); else { setMode('login'); setMessage('Password updated. Please log in.'); await supabase.auth.signOut(); }
+  }
+
+  if (!ready) return <div style={overlay}><div style={card}><div style={logo}>₹</div><h2 style={{ margin: 0 }}>Ledgerly</h2><p style={muted}>Checking your secure session…</p></div></div>;
+  if (session && mode !== 'reset') return <>{children}</>;
+
+  const title = mode === 'register' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : mode === 'reset' ? 'Set a new password' : 'Welcome back';
+  return <div style={overlay}>
+    <div style={card}>
+      <div style={brand}><div style={logo}>₹</div><div><b style={{ fontSize: 19 }}>Ledgerly</b><small style={muted}>Family money, clearly.</small></div></div>
+      <h1 style={{ fontSize: 30, margin: '26px 0 8px' }}>{title}</h1>
+      <p style={muted}>{mode === 'register' ? 'Create your secure Ledgerly account with your name, email and password.' : 'Use your email and password to access your family ledger.'}</p>
+      {mode !== 'reset' && <div style={tabs}>
+        <button type="button" style={tab(mode === 'login')} onClick={() => { setMode('login'); setMessage(''); }}>Log in</button>
+        <button type="button" style={tab(mode === 'register')} onClick={() => { setMode('register'); setMessage(''); }}>Register</button>
+        <button type="button" style={tab(mode === 'forgot')} onClick={() => { setMode('forgot'); setMessage(''); }}>Forgot</button>
+      </div>}
+      {mode === 'login' && <form onSubmit={login} style={form}><label style={label}>Email<input style={input} type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" /></label><label style={label}>Password<input style={input} type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" /></label><button style={primary} disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button></form>}
+      {mode === 'register' && <form onSubmit={register} style={form}><label style={label}>Full name<input style={input} required value={fullName} onChange={e => setFullName(e.target.value)} autoComplete="name" /></label><label style={label}>Email<input style={input} type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" /></label><label style={label}>Password<input style={input} type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" /></label><label style={label}>Confirm password<input style={input} type="password" required minLength={6} value={password2} onChange={e => setPassword2(e.target.value)} autoComplete="new-password" /></label><button style={primary} disabled={busy}>{busy ? 'Creating…' : 'Create account'}</button></form>}
+      {mode === 'forgot' && <form onSubmit={forgot} style={form}><label style={label}>Email<input style={input} type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" /></label><button style={primary} disabled={busy}>{busy ? 'Sending…' : 'Send reset email'}</button></form>}
+      {mode === 'reset' && <form onSubmit={reset} style={form}><label style={label}>New password<input style={input} type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" /></label><label style={label}>Confirm new password<input style={input} type="password" required minLength={6} value={password2} onChange={e => setPassword2(e.target.value)} autoComplete="new-password" /></label><button style={primary} disabled={busy}>{busy ? 'Updating…' : 'Update password'}</button></form>}
+      {message && <div style={notice}>{message}</div>}
+      <p style={{ ...muted, fontSize: 11, marginTop: 16 }}>Email + password authentication only. No magic-link login.</p>
+    </div>
+  </div>;
+}
+
+const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, background: 'linear-gradient(135deg,#eef4ff,#f8fafc)' };
+const card: React.CSSProperties = { width: 'min(440px,100%)', background: '#fff', border: '1px solid #dfe5ee', borderRadius: 22, padding: 24, boxShadow: '0 20px 60px #17203322', color: '#111827' };
+const brand: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10 };
+const logo: React.CSSProperties = { width: 44, height: 44, display: 'grid', placeItems: 'center', borderRadius: 13, background: '#2454a6', color: '#fff', fontWeight: 900, fontSize: 20 };
+const muted: React.CSSProperties = { color: '#667085', lineHeight: 1.5 };
+const tabs: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4, padding: 4, background: '#eef2f7', borderRadius: 12, margin: '18px 0' };
+const tab = (on: boolean): React.CSSProperties => ({ border: 0, borderRadius: 9, padding: 10, fontWeight: 800, background: on ? '#fff' : 'transparent', color: on ? '#2454a6' : '#667085' });
+const form: React.CSSProperties = { display: 'grid', gap: 12, marginTop: 18 };
+const label: React.CSSProperties = { display: 'grid', gap: 7, fontSize: 13, fontWeight: 800 };
+const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: '1px solid #d6dce4', borderRadius: 12, padding: 12, background: '#fbfcfe', color: '#111827' };
+const primary: React.CSSProperties = { border: 0, borderRadius: 12, padding: 12, background: '#2454a6', color: '#fff', fontWeight: 900 };
+const notice: React.CSSProperties = { marginTop: 14, padding: 11, borderRadius: 12, background: '#fff8e6', border: '1px solid #f0d999', color: '#7a5b06', fontSize: 13 };
