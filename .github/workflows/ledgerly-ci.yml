@@ -4,7 +4,10 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, ledgerly-expanded-release]
+    branches:
+      - main
+      - ledgerly-expanded-release
+      - 'release-hardening/**'
 
 permissions:
   contents: read
