@@ -15,7 +15,7 @@
 .codeCard strong{color:var(--on-accent)}
 .dots{color:var(--text)}
 .familyOption{color:var(--text)}
-.status{background:var(--success-bg);color:var(--good)}
+.status{background:var(--success-bg);color:var(--good)}.memberActions{grid-column:2/4;grid-row:3;display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px}.memberActions .btn{grid-column:auto!important;grid-row:auto!important;width:100%}.dangerBtn{color:var(--bad)!important;border-color:var(--bad)!important}
 .inlineForm{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:12px}
 .inlineForm input{border:1px solid var(--input-border);border-radius:12px;padding:12px;background:var(--input-bg);color:var(--text);outline:none;width:100%;min-height:48px}
 .inlineForm input::placeholder,.expenseForm input::placeholder,.expenseForm textarea::placeholder,.authCard input::placeholder{color:var(--muted)}
