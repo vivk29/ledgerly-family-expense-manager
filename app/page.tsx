@@ -87,15 +87,13 @@ export default function Home(){
       return;
     }
 
-    let activeSession=currentSession;
-    if(isTokenExpiringSoon(activeSession.expires_at)){
+    if(isTokenExpiringSoon(currentSession.expires_at)){
       const {data:refreshed,error:refreshError}=await supabase.auth.refreshSession();
       if(refreshError||!refreshed.session){
         setInvitingMemberId(null);
         setMsg('Your session expired. Please sign in again and retry the invitation.');
         return;
       }
-      activeSession=refreshed.session;
     }
 
     const {data,error}=await supabase.functions.invoke('family-invitation',{
