@@ -54,7 +54,16 @@ export default function Home(){
     const target=members.find((m:any)=>m.id===id);
     if(!target?.email){setMsg('Add an email address before sending an invitation.');return}
     setInvitingMemberId(id);
-    const {data,error}=await supabase.functions.invoke('family-invitation',{body:{action:'send',familyId:family.id,memberId:id}});
+    const {data:refreshed,error:refreshError}=await supabase.auth.refreshSession();
+    if(refreshError||!refreshed.session){
+      setInvitingMemberId(null);
+      setMsg('Your session expired. Please sign in again and retry the invitation.');
+      return;
+    }
+    const {data,error}=await supabase.functions.invoke('family-invitation',{
+      headers:{Authorization:`Bearer ${refreshed.session.access_token}`},
+      body:{action:'send',familyId:family.id,memberId:id}
+    });
     if(error){
       let message=error.message||'Could not send invitation.';
       try{
