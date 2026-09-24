@@ -1,9 +1,34 @@
 'use client';
+import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { money } from '../lib/money';
 
 const today=()=>new Date().toISOString().slice(0,10);
+
+async function extractEdgeFunctionError(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      return body?.error ?? body?.message ?? 'The invitation could not be sent.';
+    } catch {
+      return 'The invitation could not be sent.';
+    }
+  }
+  if (error instanceof FunctionsRelayError) {
+    return 'A network issue prevented the invitation from sending. Please try again.';
+  }
+  if (error instanceof FunctionsFetchError) {
+    return 'Could not reach the server. Check your connection and try again.';
+  }
+  if (error instanceof Error && error.message) return error.message;
+  return 'An unexpected error occurred while sending the invitation.';
+}
+
+function isTokenExpiringSoon(expiresAt?: number) {
+  if (!expiresAt) return true;
+  return expiresAt * 1000 - Date.now() < 60_000;
+}
 const expenseTypes=[['variable','Daily / Variable','Everyday spending that changes month to month'],['fixed','Fixed / Recurring','Rent, school fees, subscriptions, utilities'],['emi','EMI / Loan','Loan or instalment payments']];
 const paymentMethods=['UPI','Cash','Credit Card','Debit Card','Bank Transfer','Other'];
 
@@ -54,24 +79,29 @@ export default function Home(){
     const target=members.find((m:any)=>m.id===id);
     if(!target?.email){setMsg('Add an email address before sending an invitation.');return}
     setInvitingMemberId(id);
-    const {data:refreshed,error:refreshError}=await supabase.auth.refreshSession();
-    if(refreshError||!refreshed.session){
+
+    const {data:{session:currentSession},error:sessionError}=await supabase.auth.getSession();
+    if(sessionError||!currentSession){
       setInvitingMemberId(null);
       setMsg('Your session expired. Please sign in again and retry the invitation.');
       return;
     }
+
+    if(isTokenExpiringSoon(currentSession.expires_at)){
+      const {data:refreshed,error:refreshError}=await supabase.auth.refreshSession();
+      if(refreshError||!refreshed.session){
+        setInvitingMemberId(null);
+        setMsg('Your session expired. Please sign in again and retry the invitation.');
+        return;
+      }
+    }
+
     const {data,error}=await supabase.functions.invoke('family-invitation',{
-      headers:{Authorization:`Bearer ${refreshed.session.access_token}`},
       body:{action:'send',familyId:family.id,memberId:id}
     });
     if(error){
-      let message=error.message||'Could not send invitation.';
-      try{
-        const body=await (error as any).context?.json();
-        if(body?.error)message=body.error;
-      }catch{}
       setInvitingMemberId(null);
-      setMsg(message);
+      setMsg(await extractEdgeFunctionError(error));
       return;
     }
     if(data?.existingAccount){
@@ -89,7 +119,8 @@ export default function Home(){
     }
     setInvitingMemberId(null);
     setMsg(data?.ok?'Invitation sent.':'Could not send invitation.');
-    if(data?.ok)await loadFamily(family.id)}
+    if(data?.ok)await loadFamily(family.id);
+  }
  async function removeMember(id:string){if(!family||family.created_by!==session?.user?.id)return;const target=members.find((m:any)=>m.id===id);if(!target||target.user_id===session?.user?.id)return;if(!window.confirm(`Remove ${target.name} from this family? This can only succeed if they have no financial records linked to them.`))return;const r=await supabase.from('family_members').delete().eq('id',id).eq('family_id',family.id);setMsg(r.error?.message||'Member removed.');if(!r.error)await loadFamily(family.id)}
  async function editMember(id:string,name:string,email:string){setMemberEdit({id,name,email})}
  async function saveMemberEdit(e:any){e.preventDefault();if(!family||!memberEdit||!memberEdit.name.trim())return;const r=await supabase.from('family_members').update({name:memberEdit.name.trim(),email:memberEdit.email.trim()||null}).eq('id',memberEdit.id);setMsg(r.error?.message||'Member updated.');if(!r.error){setMemberEdit(null);loadFamily(family.id)}}

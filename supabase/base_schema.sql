@@ -35,7 +35,8 @@ create table if not exists public.family_members (
   income_monthly numeric(14,2) not null default 0,
   budget_monthly numeric(14,2) not null default 0,
   is_active boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  invited_at timestamptz
 );
 
 create table if not exists public.categories (
@@ -428,6 +429,9 @@ create unique index if not exists families_family_code_uidx
   on public.families(family_code) where family_code is not null;
 create index if not exists family_members_family_id_idx on public.family_members(family_id);
 create index if not exists family_members_user_id_idx on public.family_members(user_id);
+create unique index if not exists family_members_family_email_lower_uidx
+  on public.family_members(family_id, lower(trim(email)))
+  where email is not null and trim(email) <> '';
 create unique index if not exists categories_family_id_name_kind_key
   on public.categories(family_id,name,kind);
 create index if not exists expenses_family_date_idx on public.expenses(family_id,expense_date desc);
