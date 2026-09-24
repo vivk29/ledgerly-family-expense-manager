@@ -65,6 +65,39 @@ export default {
       if (!family) return json({ error: 'Family not found.' }, 404);
 
       const siteUrl = Deno.env.get('LEDGERLY_SITE_URL') || 'https://ledgerly-family-expense-manager-fix.vercel.app';
+
+      // Existing Ledgerly accounts must use a sign-in link, not inviteUserByEmail.
+      // Check Auth first so an existing account never causes inviteUserByEmail to return
+      // a non-2xx error that the browser surfaces as the generic "Edge Function..." message.
+      const { data: userPage, error: userLookupError } = await ctx.supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+
+      if (userLookupError) return json({ error: userLookupError.message }, 400);
+
+      const existingUser = (userPage?.users ?? []).find(
+        (candidate: { email?: string | null }) =>
+          String(candidate.email ?? '').trim().toLowerCase() === normalizedEmail,
+      );
+
+      if (existingUser) {
+        const { error: markInviteError } = await ctx.supabaseAdmin
+          .from('family_members')
+          .update({ invited_at: new Date().toISOString() })
+          .eq('id', member.id)
+          .eq('family_id', member.family_id);
+
+        if (markInviteError) return json({ error: markInviteError.message }, 400);
+
+        return json({
+          ok: true,
+          existingAccount: true,
+          memberId: member.id,
+          email: normalizedEmail,
+          message: 'Existing Ledgerly account found. Send a sign-in invitation to this email.',
+        });
+      }
       const { data: invited, error: inviteError } = await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(
         normalizedEmail,
         {

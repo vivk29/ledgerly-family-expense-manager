@@ -49,7 +49,47 @@ export default function Home(){
  async function addCategory(e:any){e.preventDefault();if(!family||!categoryName.trim())return;const r=await supabase.from('categories').insert({family_id:family.id,name:categoryName.trim(),kind:'expense'});setMsg(r.error?.message||'Category added.');if(!r.error){await loadFamily(family.id);setCategoryName('')}}
  async function toggleMember(id:string,active:boolean){const r=await supabase.from('family_members').update({is_active:active}).eq('id',id);setMsg(r.error?.message||(active?'Member restored.':'Member archived.'));if(!r.error)loadFamily(family.id)}
  async function addMember(e:any){e.preventDefault();if(!family||!memberForm.name.trim())return;const r=await supabase.from('family_members').insert({family_id:family.id,name:memberForm.name.trim(),email:memberForm.email.trim()||null,income_monthly:0,budget_monthly:0,is_active:true});setMsg(r.error?.message||'Member added.');if(!r.error){setMemberForm({name:'',email:''});await loadFamily(family.id)}}
- async function inviteMember(id:string){if(!family)return;const target=members.find((m:any)=>m.id===id);if(!target?.email){setMsg('Add an email address before sending an invitation.');return}setInvitingMemberId(id);const {data,error}=await supabase.functions.invoke('family-invitation',{body:{action:'send',familyId:family.id,memberId:id}});if(error){setInvitingMemberId(null);setMsg(data?.error||error.message||'Could not send invitation.');return}if(data?.existingAccount){const {error:magicLinkError}=await supabase.auth.signInWithOtp({email:target.email.trim(),options:{shouldCreateUser:false,emailRedirectTo:window.location.origin+'/?invite_member_id='+encodeURIComponent(id),data:{ledgerly_member_id:id}}});setInvitingMemberId(null);setMsg(magicLinkError?.message||(magicLinkError?'Could not send invitation.':'Invitation sent. The existing Ledgerly account will receive a sign-in link.'));return}setInvitingMemberId(null);setMsg(data?.ok?'Invitation sent.':'Could not send invitation.');if(data?.ok)await loadFamily(family.id)}
+ async function inviteMember(id:string){
+    if(!family)return;
+    const target=members.find((m:any)=>m.id===id);
+    if(!target?.email){setMsg('Add an email address before sending an invitation.');return}
+    setInvitingMemberId(id);
+    const {data:refreshed,error:refreshError}=await supabase.auth.refreshSession();
+    if(refreshError||!refreshed.session){
+      setInvitingMemberId(null);
+      setMsg('Your session expired. Please sign in again and retry the invitation.');
+      return;
+    }
+    const {data,error}=await supabase.functions.invoke('family-invitation',{
+      headers:{Authorization:`Bearer ${refreshed.session.access_token}`},
+      body:{action:'send',familyId:family.id,memberId:id}
+    });
+    if(error){
+      let message=error.message||'Could not send invitation.';
+      try{
+        const body=await (error as any).context?.json();
+        if(body?.error)message=body.error;
+      }catch{}
+      setInvitingMemberId(null);
+      setMsg(message);
+      return;
+    }
+    if(data?.existingAccount){
+      const {error:magicLinkError}=await supabase.auth.signInWithOtp({
+        email:target.email.trim(),
+        options:{
+          shouldCreateUser:false,
+          emailRedirectTo:window.location.origin+'/?invite_member_id='+encodeURIComponent(id),
+          data:{ledgerly_member_id:id}
+        }
+      });
+      setInvitingMemberId(null);
+      setMsg(magicLinkError?.message||(magicLinkError?'Could not send invitation.':'Invitation sent. The existing Ledgerly account will receive a sign-in link.'));
+      return;
+    }
+    setInvitingMemberId(null);
+    setMsg(data?.ok?'Invitation sent.':'Could not send invitation.');
+    if(data?.ok)await loadFamily(family.id)}
  async function removeMember(id:string){if(!family||family.created_by!==session?.user?.id)return;const target=members.find((m:any)=>m.id===id);if(!target||target.user_id===session?.user?.id)return;if(!window.confirm(`Remove ${target.name} from this family? This can only succeed if they have no financial records linked to them.`))return;const r=await supabase.from('family_members').delete().eq('id',id).eq('family_id',family.id);setMsg(r.error?.message||'Member removed.');if(!r.error)await loadFamily(family.id)}
  async function editMember(id:string,name:string,email:string){setMemberEdit({id,name,email})}
  async function saveMemberEdit(e:any){e.preventDefault();if(!family||!memberEdit||!memberEdit.name.trim())return;const r=await supabase.from('family_members').update({name:memberEdit.name.trim(),email:memberEdit.email.trim()||null}).eq('id',memberEdit.id);setMsg(r.error?.message||'Member updated.');if(!r.error){setMemberEdit(null);loadFamily(family.id)}}
