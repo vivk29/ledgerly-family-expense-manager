@@ -66,47 +66,9 @@ export default {
 
       const siteUrl = Deno.env.get('LEDGERLY_SITE_URL') || 'https://ledgerly-family-expense-manager-fix.vercel.app';
 
-      // Existing Ledgerly accounts must use a sign-in link, not inviteUserByEmail.
-      // Check Auth first so an existing account never causes inviteUserByEmail to return
-      // a non-2xx error that the browser surfaces as the generic "Edge Function..." message.
-      // Auth Admin exposes users through a paginated list. Walk pages until the
-      // normalized email is found instead of only inspecting the first 1,000 users.
-      let existingUser: { id: string; email?: string | null } | null = null;
-      const perPage = 1000;
-      for (let page = 1; ; page += 1) {
-        const { data: userPage, error: userLookupError } = await ctx.supabaseAdmin.auth.admin.listUsers({
-          page,
-          perPage,
-        });
-
-        if (userLookupError) return json({ error: userLookupError.message }, 400);
-
-        const users = userPage?.users ?? [];
-        existingUser = users.find(
-          (candidate: { id: string; email?: string | null }) =>
-            String(candidate.email ?? '').trim().toLowerCase() === normalizedEmail,
-        ) ?? null;
-
-        if (existingUser || users.length < perPage) break;
-      }
-
-      if (existingUser) {
-        const { error: markInviteError } = await ctx.supabaseAdmin
-          .from('family_members')
-          .update({ invited_at: new Date().toISOString() })
-          .eq('id', member.id)
-          .eq('family_id', member.family_id);
-
-        if (markInviteError) return json({ error: markInviteError.message }, 400);
-
-        return json({
-          ok: true,
-          existingAccount: true,
-          memberId: member.id,
-          email: normalizedEmail,
-          message: 'Existing Ledgerly account found. Send a sign-in invitation to this email.',
-        });
-      }
+      // Try the normal invitation first. Supabase returns an Auth error when the
+      // email already belongs to an existing account; we convert that specific case
+      // into our existing-account flow instead of doing a slow Admin user scan.
       const { data: invited, error: inviteError } = await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(
         normalizedEmail,
         {
