@@ -1,10 +1,12 @@
 import { withSupabase } from 'npm:@supabase/server@^1';
 
+declare const Deno: { env: { get(name: string): string | undefined } };
+
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status });
 
 export default {
-  fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
+  fetch: withSupabase({ auth: 'user' }, async (req: Request, ctx: any) => {
     if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
 
     let body: { action?: string; familyId?: string; memberId?: string };
