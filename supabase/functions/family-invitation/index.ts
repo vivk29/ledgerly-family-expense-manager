@@ -69,17 +69,26 @@ export default {
       // Existing Ledgerly accounts must use a sign-in link, not inviteUserByEmail.
       // Check Auth first so an existing account never causes inviteUserByEmail to return
       // a non-2xx error that the browser surfaces as the generic "Edge Function..." message.
-      const { data: userPage, error: userLookupError } = await ctx.supabaseAdmin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
+      // Auth Admin exposes users through a paginated list. Walk pages until the
+      // normalized email is found instead of only inspecting the first 1,000 users.
+      let existingUser: { id: string; email?: string | null } | null = null;
+      const perPage = 1000;
+      for (let page = 1; ; page += 1) {
+        const { data: userPage, error: userLookupError } = await ctx.supabaseAdmin.auth.admin.listUsers({
+          page,
+          perPage,
+        });
 
-      if (userLookupError) return json({ error: userLookupError.message }, 400);
+        if (userLookupError) return json({ error: userLookupError.message }, 400);
 
-      const existingUser = (userPage?.users ?? []).find(
-        (candidate: { email?: string | null }) =>
-          String(candidate.email ?? '').trim().toLowerCase() === normalizedEmail,
-      );
+        const users = userPage?.users ?? [];
+        existingUser = users.find(
+          (candidate: { id: string; email?: string | null }) =>
+            String(candidate.email ?? '').trim().toLowerCase() === normalizedEmail,
+        ) ?? null;
+
+        if (existingUser || users.length < perPage) break;
+      }
 
       if (existingUser) {
         const { error: markInviteError } = await ctx.supabaseAdmin
