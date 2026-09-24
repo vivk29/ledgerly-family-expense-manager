@@ -36,6 +36,25 @@ export default {
       if (!member.email) return json({ error: 'Add an email address before sending an invitation.' }, 400);
       if (member.user_id) return json({ error: 'This member already has a Ledgerly account linked.' }, 400);
 
+      const normalizedEmail = String(member.email).trim().toLowerCase();
+      const { data: familyMembers, error: familyMembersError } = await ctx.supabase
+        .from('family_members')
+        .select('id,email,user_id')
+        .eq('family_id', member.family_id);
+
+      if (familyMembersError) return json({ error: familyMembersError.message }, 400);
+      const duplicateInFamily = (familyMembers ?? []).some(
+        (candidate: { id: string; email: string | null; user_id: string | null }) =>
+          candidate.id !== member.id &&
+          String(candidate.email ?? '').trim().toLowerCase() === normalizedEmail,
+      );
+      if (duplicateInFamily) {
+        return json({
+          error: 'This person is already a member of this family.',
+          code: 'ALREADY_IN_FAMILY',
+        }, 409);
+      }
+
       const { data: family, error: familyError } = await ctx.supabase
         .from('families')
         .select('id,name')
@@ -45,9 +64,9 @@ export default {
       if (familyError) return json({ error: familyError.message }, 400);
       if (!family) return json({ error: 'Family not found.' }, 404);
 
-      const siteUrl = Deno.env.get('LEDGERLY_SITE_URL') || 'https://ledgerly-family-expense-manager-fixed-622n7fhnc.vercel.app';
+      const siteUrl = Deno.env.get('LEDGERLY_SITE_URL') || 'https://ledgerly-family-expense-manager-fix.vercel.app';
       const { data: invited, error: inviteError } = await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(
-        String(member.email).trim(),
+        normalizedEmail,
         {
           data: {
             ledgerly_family_id: member.family_id,
@@ -62,10 +81,20 @@ export default {
       if (inviteError) {
         const message = inviteError.message || 'Could not send the invitation.';
         if (/already.*registered|already.*exists|already.*confirmed/i.test(message)) {
+          const { error: markInviteError } = await ctx.supabaseAdmin
+            .from('family_members')
+            .update({ invited_at: new Date().toISOString() })
+            .eq('id', member.id)
+            .eq('family_id', member.family_id);
+
+          if (markInviteError) return json({ error: markInviteError.message }, 400);
           return json({
-            error: 'This email already has a confirmed Ledgerly account. Ask them to sign in and join the family with the family code.',
-            code: 'USER_ALREADY_REGISTERED',
-          }, 409);
+            ok: true,
+            existingAccount: true,
+            memberId: member.id,
+            email: normalizedEmail,
+            message: 'Existing Ledgerly account found. Send a sign-in invitation to this email.',
+          });
         }
         return json({ error: message }, 400);
       }
