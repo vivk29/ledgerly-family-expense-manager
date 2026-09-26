@@ -173,3 +173,8 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 @media(min-width:761px){
   .backBtn{order:0}
 }
+
+
+/* Family selector and switcher */
+.menuSection{border-bottom:1px solid var(--divider);padding-bottom:7px;margin-bottom:5px}.menuLabel{display:block;padding:7px 11px 4px;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.8px}.menuSection button{display:flex;align-items:center;justify-content:space-between;gap:8px}.menuSection button small{color:var(--muted);font-size:11px}.menuSection .selectedMenuItem{background:var(--accent-soft);color:var(--accent-strong);font-weight:900}.familyChooser{display:grid;gap:12px;margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:18px;background:var(--surface-2)}.familyChooser label{display:grid;gap:7px;font-size:13px;font-weight:800}.familyChooser select{min-height:48px}.familyChooser small{font-size:12px;line-height:1.4}.seg.three{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:760px){.seg.three{grid-template-columns:1fr}.menuSection button{min-height:46px}.familyChooser{padding:14px}}
