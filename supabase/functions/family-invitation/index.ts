@@ -16,7 +16,7 @@ export default {
       return json({ error: 'Invalid request body.' }, 400);
     }
 
-    const userId = ctx.userClaims?.sub;
+    const userId = ctx.userClaims?.id ?? ctx.userClaims?.sub;
     const userEmail = String(ctx.userClaims?.email ?? '').trim().toLowerCase();
     if (!userId) return json({ error: 'Authentication required.' }, 401);
 
