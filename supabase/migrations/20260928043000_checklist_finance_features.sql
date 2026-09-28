@@ -13,11 +13,12 @@ create table if not exists public.income_schedules (
   category_id uuid references public.categories(id) on delete set null,
   description text not null,
   amount numeric(14,2) not null check (amount > 0),
-  due_day smallint not null check (due_day between 1 and 31),
+  frequency text not null default 'monthly',
   start_date date not null default current_date,
   end_date date,
+  next_due_date date not null default current_date,
   is_active boolean not null default true,
-  last_generated_date date,
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 alter table public.income_schedules enable row level security;
@@ -53,5 +54,6 @@ create policy categories_update on public.categories for update to authenticated
   with check (private.is_family_member(family_id));
 
 create index if not exists income_schedules_family_active_idx on public.income_schedules(family_id,is_active);
+create index if not exists income_schedules_next_due_idx on public.income_schedules(next_due_date);
 create index if not exists emi_payments_family_date_idx on public.emi_payments(family_id,payment_date desc);
 create index if not exists emi_payments_emi_idx on public.emi_payments(emi_id);
