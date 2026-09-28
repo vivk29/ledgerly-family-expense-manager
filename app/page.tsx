@@ -18,7 +18,7 @@ export default function Home(){
  const [familyMode,setFamilyMode]=useState<'choose'|'create'|'join'>('choose');
  const [selectedFamilyId,setSelectedFamilyId]=useState('');
  const [familyForm,setFamilyForm]=useState({name:'',pin:'',code:'',memberName:''});
- const [expense,setExpense]=useState({description:'',amount:'',date:today(),payer:'',category:'',type:'variable',payment:'UPI',notes:'',split:'single',members:[] as string[],custom:{} as Record<string,string>,percent:{} as Record<string,string>,search:''});
+ const [expense,setExpense]=useState({description:'',amount:'',date:today(),payer:'',category:'',type:'variable',payment:'UPI',notes:'',split:'single',members:[] as string[],custom:{} as Record<string,string>,percent:{} as Record<string,string>,search:'',gstTreatment:'non_gst',gstRate:'',gstAmount:''});
  const [income,setIncome]=useState({description:'Salary',amount:'',date:today(),member:'',category:''});
  const [plan,setPlan]=useState({name:'',amount:'',dueDay:'1',payer:'',type:'fixed',remaining:'',remainingInstallments:''});
  const [editingId,setEditingId]=useState<string|null>(null),[receiptFile,setReceiptFile]=useState<File|null>(null),[budget,setBudget]=useState({amount:'',month:today().slice(0,7),category:'',member:''}),[transfer,setTransfer]=useState({from:'',to:'',amount:'',date:today(),notes:''}),[loan,setLoan]=useState({name:'',principal:'',from:'',to:'',dueDate:'',notes:''}),[memberForm,setMemberForm]=useState({name:'',email:''}),[categoryName,setCategoryName]=useState('');
