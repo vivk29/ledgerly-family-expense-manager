@@ -23,4 +23,4 @@ jobs:
           LEDGERLY_E2E_USER_B_EMAIL: ${{ secrets.LEDGERLY_E2E_USER_B_EMAIL }}
           LEDGERLY_E2E_USER_B_PASSWORD: ${{ secrets.LEDGERLY_E2E_USER_B_PASSWORD }}
           LEDGERLY_E2E_FAMILY_PIN: ${{ secrets.LEDGERLY_E2E_FAMILY_PIN }}
-        run: npx --yes @playwright/test@1.55.0 test tests/e2e/authenticated-family.spec.ts
+        run: npx --yes @playwright/test@1.55.0 test tests/e2e/authenticated-family.spec.cjs
