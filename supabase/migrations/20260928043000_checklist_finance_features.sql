@@ -21,6 +21,10 @@ create table if not exists public.income_schedules (
   created_at timestamptz not null default now()
 );
 alter table public.income_schedules enable row level security;
+drop policy if exists income_schedules_select on public.income_schedules;
+drop policy if exists income_schedules_insert on public.income_schedules;
+drop policy if exists income_schedules_update on public.income_schedules;
+drop policy if exists income_schedules_delete on public.income_schedules;
 create policy income_schedules_select on public.income_schedules for select to authenticated using (private.is_family_member(family_id));
 create policy income_schedules_insert on public.income_schedules for insert to authenticated with check (private.is_family_member(family_id));
 create policy income_schedules_update on public.income_schedules for update to authenticated using (private.is_family_member(family_id)) with check (private.is_family_member(family_id));
@@ -38,9 +42,12 @@ create table if not exists public.emi_payments (
   created_at timestamptz not null default now()
 );
 alter table public.emi_payments enable row level security;
+drop policy if exists emi_payments_select on public.emi_payments;
+drop policy if exists emi_payments_insert on public.emi_payments;
 create policy emi_payments_select on public.emi_payments for select to authenticated using (private.is_family_member(family_id));
 create policy emi_payments_insert on public.emi_payments for insert to authenticated with check (private.is_family_member(family_id));
 
+drop policy if exists categories_update on public.categories;
 create policy categories_update on public.categories for update to authenticated
   using (private.is_family_member(family_id))
   with check (private.is_family_member(family_id));
