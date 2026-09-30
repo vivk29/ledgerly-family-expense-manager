@@ -1,4 +1,31 @@
-import ExcelJS from 'exceljs';
+type ExcelJSNamespace = typeof import('exceljs');
+
+declare global { interface Window { ExcelJS?: ExcelJSNamespace; } }
+
+let excelJsPromise: Promise<ExcelJSNamespace> | null = null;
+
+async function loadExcelJS(): Promise<ExcelJSNamespace> {
+  if (typeof window === 'undefined') throw new Error('Excel export is only available in the browser.');
+  if (window.ExcelJS) return window.ExcelJS;
+  if (!excelJsPromise) {
+    excelJsPromise = new Promise((resolve,reject) => {
+      const existing = document.querySelector('script[data-ledgerly-exceljs]') as HTMLScriptElement | null;
+      if (existing) {
+        existing.addEventListener('load',()=>resolve(window.ExcelJS!));
+        existing.addEventListener('error',()=>reject(new Error('Could not load Excel export library.')));
+        return;
+      }
+      const script=document.createElement('script');
+      script.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+      script.async=true;
+      script.dataset.ledgerlyExceljs='true';
+      script.onload=()=>window.ExcelJS ? resolve(window.ExcelJS) : reject(new Error('ExcelJS loaded but was not available.'));
+      script.onerror=()=>reject(new Error('Could not load Excel export library. Check your internet connection and try again.'));
+      document.head.appendChild(script);
+    });
+  }
+  return excelJsPromise;
+}
 
 export interface ExportBundle {
   family: any;
@@ -81,7 +108,7 @@ function expenseRows(bundle:ExportBundle) {
   return rows;
 }
 
-function autoWidths(ws:ExcelJS.Worksheet) {
+function autoWidths(ws:any) {
   ws.columns.forEach(col => {
     let max = 12;
     col.eachCell({includeEmpty:false}, cell => {
@@ -165,7 +192,7 @@ export async function fetchExportBundle(
 }
 
 export function buildLedgerlyWorkbook(bundle:ExportBundle) {
-  const wb = new ExcelJS.Workbook();
+  const wb = new (window.ExcelJS as any).Workbook();
   wb.creator = 'Ledgerly';
   wb.subject = 'Ledgerly family financial data export';
   wb.title = 'Ledgerly Data Export';
@@ -347,6 +374,7 @@ export function buildLedgerlyWorkbook(bundle:ExportBundle) {
 }
 
 export async function downloadLedgerlyWorkbook(bundle:ExportBundle) {
+  await loadExcelJS();
   const workbook = buildLedgerlyWorkbook(bundle);
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
