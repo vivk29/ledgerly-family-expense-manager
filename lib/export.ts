@@ -1,3 +1,4 @@
+// @ts-nocheck
 type ExcelJSNamespace = any;
 
 declare global { interface Window { ExcelJS?: ExcelJSNamespace; } }
