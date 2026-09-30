@@ -1,0 +1,41 @@
+name: Export build diagnostic
+on:
+  push:
+    branches: [main]
+jobs:
+  diagnostic:
+    if: github.event.head_commit.message != 'chore: capture export build diagnostic'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm install > /tmp/install.log 2>&1 || true
+      - name: Typecheck and build
+        run: |
+          set +e
+          npm run typecheck > /tmp/typecheck.log 2>&1
+          TC=$?
+          npm run build > /tmp/build.log 2>&1
+          BC=$?
+          {
+            echo "TYPECHECK_EXIT=$TC"
+            echo "BUILD_EXIT=$BC"
+            echo "--- TYPECHECK ---"
+            cat /tmp/typecheck.log
+            echo "--- BUILD ---"
+            cat /tmp/build.log
+          } > build-diagnostic.txt
+          exit 0
+      - name: Commit diagnostic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build-diagnostic.txt
+          git commit -m "chore: capture export build diagnostic" || exit 0
+          git push
