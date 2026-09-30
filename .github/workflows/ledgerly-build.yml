@@ -7,6 +7,7 @@ on:
       - 'package.json'
       - 'tsconfig.json'
       - 'next.config.*'
+  pull_request:
 jobs:
   build:
     runs-on: ubuntu-latest
