@@ -120,7 +120,7 @@ function autoWidths(ws:any) {
   });
 }
 
-function styleSheet(ws:ExcelJS.Worksheet) {
+function styleSheet(ws:any) {
   ws.views = [{state:'frozen', ySplit:1}];
   ws.autoFilter = undefined;
   ws.eachRow((row,rowNumber) => {
@@ -135,7 +135,7 @@ function styleSheet(ws:ExcelJS.Worksheet) {
   autoWidths(ws);
 }
 
-function addTable(ws:ExcelJS.Worksheet, name:string, headers:string[], rows:any[][]) {
+function addTable(ws:any, name:string, headers:string[], rows:any[][]) {
   ws.addTable({
     name,
     ref:'A1',
@@ -147,13 +147,13 @@ function addTable(ws:ExcelJS.Worksheet, name:string, headers:string[], rows:any[
   styleSheet(ws);
 }
 
-function setCurrencyColumn(ws:ExcelJS.Worksheet, index:number) {
+function setCurrencyColumn(ws:any, index:number) {
   ws.getColumn(index).eachCell((cell,rowNumber) => {
     if (rowNumber > 1 && typeof cell.value === 'number') cell.numFmt = INR_FORMAT;
   });
 }
 
-function addNoRecordsNote(ws:ExcelJS.Worksheet, message = 'No records available') {
+function addNoRecordsNote(ws:any, message = 'No records available') {
   ws.getCell('A2').value = message;
   ws.getCell('A2').font = {italic:true,color:{argb:'FF666666'}};
 }
