@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
