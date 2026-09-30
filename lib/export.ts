@@ -1,4 +1,4 @@
-type ExcelJSNamespace = typeof import('exceljs');
+type ExcelJSNamespace = any;
 
 declare global { interface Window { ExcelJS?: ExcelJSNamespace; } }
 
