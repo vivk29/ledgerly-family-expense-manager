@@ -141,3 +141,5 @@ The other remaining Security Advisor warning is **Leaked Password Protection dis
 6. Complete Android/Play Store requirements separately.
 
 **Important:** The Ledgerly hardening work must not modify or interact with the separate AI Trading project.
+
+<!-- diagnostic -->
