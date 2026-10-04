@@ -64,82 +64,26 @@ export default {
       if (familyError) return json({ error: familyError.message }, 400);
       if (!family) return json({ error: 'Family not found.' }, 404);
 
-      const siteUrl = Deno.env.get('LEDGERLY_SITE_URL') || 'https://ledgerly-family-expense-manager-fix.vercel.app';
-
-      // Existing Ledgerly accounts must use a sign-in link, not inviteUserByEmail.
-      // Check Auth first so an existing account never causes inviteUserByEmail to return
-      // a non-2xx error that the browser surfaces as the generic "Edge Function..." message.
-      const { data: userPage, error: userLookupError } = await ctx.supabaseAdmin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
-
-      if (userLookupError) return json({ error: userLookupError.message }, 400);
-
-      const existingUser = (userPage?.users ?? []).find(
-        (candidate: { email?: string | null }) =>
-          String(candidate.email ?? '').trim().toLowerCase() === normalizedEmail,
-      );
-
-      if (existingUser) {
-        const { error: markInviteError } = await ctx.supabaseAdmin
-          .from('family_members')
-          .update({ invited_at: new Date().toISOString() })
-          .eq('id', member.id)
-          .eq('family_id', member.family_id);
-
-        if (markInviteError) return json({ error: markInviteError.message }, 400);
-
-        return json({
-          ok: true,
-          existingAccount: true,
-          memberId: member.id,
-          email: normalizedEmail,
-          message: 'Existing Ledgerly account found. Send a sign-in invitation to this email.',
-        });
-      }
-      const { data: invited, error: inviteError } = await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(
-        normalizedEmail,
-        {
-          data: {
-            ledgerly_family_id: member.family_id,
-            ledgerly_member_id: member.id,
-            ledgerly_family_name: family.name,
-            ledgerly_member_name: member.name,
-          },
-          redirectTo: siteUrl,
-        },
-      );
-
-      if (inviteError) {
-        const message = inviteError.message || 'Could not send the invitation.';
-        if (/already.*registered|already.*exists|already.*confirmed/i.test(message)) {
-          const { error: markInviteError } = await ctx.supabaseAdmin
-            .from('family_members')
-            .update({ invited_at: new Date().toISOString() })
-            .eq('id', member.id)
-            .eq('family_id', member.family_id);
-
-          if (markInviteError) return json({ error: markInviteError.message }, 400);
-          return json({
-            ok: true,
-            existingAccount: true,
-            memberId: member.id,
-            email: normalizedEmail,
-            message: 'Existing Ledgerly account found. Send a sign-in invitation to this email.',
-          });
-        }
-        return json({ error: message }, 400);
-      }
-
-      const { error: updateError } = await ctx.supabaseAdmin
+      // Ledgerly invitations use the same Supabase magic-link flow as sign-in.
+      // The browser sends the magic link after this endpoint validates the member.
+      // We only record the invitation timestamp here; we deliberately do not call
+      // auth.admin.inviteUserByEmail(), so the invitation does not depend on the
+      // separate Supabase invitation-email configuration.
+      const { error: markInviteError } = await ctx.supabaseAdmin
         .from('family_members')
         .update({ invited_at: new Date().toISOString() })
         .eq('id', member.id)
         .eq('family_id', member.family_id);
 
-      if (updateError) return json({ error: updateError.message }, 400);
-      return json({ ok: true, userId: invited?.user?.id ?? null });
+      if (markInviteError) return json({ error: markInviteError.message }, 400);
+
+      return json({
+        ok: true,
+        memberId: member.id,
+        email: normalizedEmail,
+        familyId: family.id,
+        message: 'Invitation validated. Send a Ledgerly magic link to this email.',
+      });
     }
 
     if (body.action === 'accept') {
