@@ -4,7 +4,7 @@ export interface ExportBundle {
   paymentAccounts:any[]; transfers:any[]; loans:any[]; exportedBy:string; exportedAt:string;
 }
 
-const esc=(v:any)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+const esc=(v:any)=>String(v??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 const num=(v:any)=>{const n=Number(v);return Number.isFinite(n)?n:0};
 const memberName=(ms:any[],id:any)=>ms.find(m=>m.id===id)?.name??'N/A';
 const categoryName=(cs:any[],id:any)=>cs.find(c=>c.id===id)?.name??'N/A';
@@ -36,11 +36,11 @@ type Sheet={name:string;headers:string[];rows:any[][];currency?:number[];percent
 const tableName=(i:number)=>'LedgerlyTable'+i;
 
 function stylesXml(){return xml(`<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="3"><font><sz val="11"/><name val="Aptos"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Aptos"/></font><font><b/><sz val="16"/><name val="Aptos"/></font></fonts>
-<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F6340"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF3F7F4"/><bgColor indexed="64"/></patternFill></fill></fills>
+<fonts count="3"><font><sz val="11"/><name val="Aptos"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Aptos"/></font><font><b/><sz val="16"/><name val="Aptos"/></font></fonts>
+<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F6340"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF3F7F4"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
 <numFmts count="3"><numFmt numFmtId="164" formatCode="&quot;₹&quot;#,##0.00"/><numFmt numFmtId="165" formatCode="0.00%"/><numFmt numFmtId="166" formatCode="dd-mm-yyyy"/></numFmts>
-<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="1" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`)}
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="0"/><tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16"/></styleSheet>`)}
 
 function cell(v:any,style=0){
   if(v&&typeof v==='object'&&'formula'in v)return `<c s="${style}"><f>${esc(v.formula)}</f><v>0</v></c>`;
@@ -60,8 +60,12 @@ function sheetXml(sheet:Sheet,index:number,table?:{ref:string,name:string}){
   const pane=sheet.headers.length?`<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>`:'';
   const tablePart=table?`<tableParts count="1"><tablePart r:id="rId1"/></tableParts>`:''; 
   const note=sheet.note&&!sheet.rows.length?`<mergeCells count="1"><mergeCell ref="A2:${colName(Math.max(1,sheet.headers.length))}2"/></mergeCells>`:'';
-  const noteRow=sheet.note&&!sheet.rows.length?`<row r="2"><c s="6" t="inlineStr"><is><t>${esc(sheet.note)}</t></is></c></row>`:''; 
-  return xml(`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><cols>${cols}</cols>${pane}<sheetData>${body}${noteRow}</sheetData>${note}${tablePart}</worksheet>`);
+  const noteRow=sheet.note&&!sheet.rows.length?`<row r="2"><c s="6" t="inlineStr"><is><t>${esc(sheet.note)}</t></is></c></row>`:'';
+  const lastRow=sheet.note&&!sheet.rows.length?2:Math.max(1,rows.length);
+  const dimension=`<dimension ref="A1:${colName(Math.max(1,sheet.headers.length))}${lastRow}"/>`;
+  const formatPr='<sheetFormatPr defaultRowHeight="15"/>';
+  const pageMargins='<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
+  return xml(`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${dimension}${pane}${formatPr}<cols>${cols}</cols><sheetData>${body}${noteRow}</sheetData>${note}${pageMargins}${tablePart}</worksheet>`);
 }
 function tableXml(ref:string,name:string,headers:string[],id:number){return xml(`<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="${id}" name="${name}" displayName="${name}" ref="${ref}"><autoFilter ref="${ref}"/><tableColumns count="${headers.length}">${headers.map((h,i)=>`<tableColumn id="${i+1}" name="${esc(h)}"/>`).join('')}</tableColumns><tableStyleInfo name="TableStyleMedium9" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`)}
 
