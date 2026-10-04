@@ -69,8 +69,9 @@ export default function Home(){
   const {data,error}=await supabase.auth.signUp({email:email.trim(),password});
   if(error){setLoading(false);setMsg(error.message);return}
   if(data.session){
-    await loadFamilies();
-    setMsg('Account created successfully. You can use the same email and password to sign in.');
+    await supabase.auth.signOut();
+    setAuthMode('signin');
+    setMsg('Account created successfully. Now sign in with the same email and password.');
   }else{
     setMsg('Account created. If email confirmation is enabled, confirm the email and then sign in with the same email and password.');
     setAuthMode('signin');
