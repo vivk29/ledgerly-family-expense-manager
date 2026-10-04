@@ -168,22 +168,27 @@ async function addLoan(e:any){e.preventDefault();if(!family||!loan.name||!loan.p
       setMsg(message);
       return;
     }
-    if(data?.existingAccount){
-      const {error:magicLinkError}=await supabase.auth.signInWithOtp({
-        email:target.email.trim(),
-        options:{
-          shouldCreateUser:false,
-          emailRedirectTo:window.location.origin+'/?invite_member_id='+encodeURIComponent(id),
-          data:{ledgerly_member_id:id}
-        }
-      });
+    if(!data?.ok){
       setInvitingMemberId(null);
-      setMsg(magicLinkError?.message||(magicLinkError?'Could not send invitation.':'Invitation sent. The existing Ledgerly account will receive a sign-in link.'));
+      setMsg('Could not validate the invitation.');
       return;
     }
+
+    // Use the same Supabase magic-link flow for both new and existing accounts.
+    // The invitation endpoint only validates/records the family member; Supabase
+    // handles creating or signing in the user and sends the email link.
+    const {error:magicLinkError}=await supabase.auth.signInWithOtp({
+      email:target.email.trim(),
+      options:{
+        shouldCreateUser:true,
+        emailRedirectTo:window.location.origin+'/?invite_member_id='+encodeURIComponent(id),
+        data:{ledgerly_member_id:id}
+      }
+    });
+
     setInvitingMemberId(null);
-    setMsg(data?.ok?'Invitation sent.':'Could not send invitation.');
-    if(data?.ok)await loadFamily(family.id)}
+    setMsg(magicLinkError?.message||(magicLinkError?'Could not send invitation.':'Invitation sent. Check the member email for the Ledgerly magic link.'));
+    if(!magicLinkError)await loadFamily(family.id)}
  async function removeMember(id:string){if(!family||family.created_by!==session?.user?.id)return;const target=members.find((m:any)=>m.id===id);if(!target||target.user_id===session?.user?.id)return;if(!window.confirm(`Remove ${target.name} from this family? This can only succeed if they have no financial records linked to them.`))return;const r=await supabase.from('family_members').delete().eq('id',id).eq('family_id',family.id);setMsg(r.error?.message||'Member removed.');if(!r.error)await loadFamily(family.id)}
  async function editMember(id:string,name:string,email:string){setMemberEdit({id,name,email})}
  async function saveMemberEdit(e:any){e.preventDefault();if(!family||!memberEdit||!memberEdit.name.trim())return;const r=await supabase.from('family_members').update({name:memberEdit.name.trim(),email:memberEdit.email.trim()||null}).eq('id',memberEdit.id);setMsg(r.error?.message||'Member updated.');if(!r.error){setMemberEdit(null);loadFamily(family.id)}}
