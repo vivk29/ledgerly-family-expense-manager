@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { allocateExpense } from '../lib/split';
 import { minimizeTransfers } from '../lib/settlement';
 import { validateDifferentMembers, validateSettlementPayment } from '../lib/validators';
+import { buildLedgerlyXlsx } from '../lib/export';
 
 describe('Ledgerly split allocation', () => {
   it('splits ₹100 equally across 3 members with exact paise', () => {
@@ -50,5 +51,31 @@ describe('Ledgerly validation', () => {
   it('rejects transfers or loans between the same member', () => {
     expect(()=>validateDifferentMembers('a','a')).toThrow();
     expect(()=>validateDifferentMembers('a','b')).not.toThrow();
+  });
+});
+
+
+describe('Ledgerly Excel export', () => {
+  it('builds a valid OOXML zip with unique table ids and expected sheets/formula', () => {
+    const bytes = buildLedgerlyXlsx({
+      family:{id:'f1',name:'Test Family'},
+      members:[{id:'m1',name:'Vivek'}],
+      categories:[{id:'c1',name:'Salary',kind:'income'}],
+      incomes:[{id:'i1',member_id:'m1',category_id:'c1',amount:1000,income_date:'2026-10-01',description:'Salary'}],
+      expenses:[],
+      paymentAccounts:[],
+      transfers:[],
+      loans:[],
+      exportedBy:'test@example.com',
+      exportedAt:'2026-10-04T12:00:00.000Z'
+    });
+    const xmlText = new TextDecoder().decode(bytes);
+    expect(xmlText.startsWith('PK')).toBe(true);
+    expect(xmlText).toContain('Overview');
+    expect(xmlText).toContain('Raw Transfers Loans');
+    expect(xmlText).toContain('SUM(Income!E2:E1048576)');
+    const ids = [...xmlText.matchAll(/<table[^>]* id="(\d+)"/g)].map(m=>m[1]);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
