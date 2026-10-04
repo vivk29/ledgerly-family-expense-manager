@@ -267,6 +267,7 @@ async function addLoan(e:any){e.preventDefault();if(!family||!loan.name||!loan.p
     setInvitingMemberId(null);
     setMsg('Invitation sent. The member can open the email, finish registration, and then join the family.');
     await loadFamily(family.id);
+ }
  async function removeMember(id:string){if(!family||family.created_by!==session?.user?.id)return;const target=members.find((m:any)=>m.id===id);if(!target||target.user_id===session?.user?.id)return;if(!window.confirm(`Remove ${target.name} from this family? This can only succeed if they have no financial records linked to them.`))return;const r=await supabase.from('family_members').delete().eq('id',id).eq('family_id',family.id);setMsg(r.error?.message||'Member removed.');if(!r.error)await loadFamily(family.id)}
  async function editMember(id:string,name:string,email:string){setMemberEdit({id,name,email})}
  async function saveMemberEdit(e:any){e.preventDefault();if(!family||!memberEdit||!memberEdit.name.trim())return;const r=await supabase.from('family_members').update({name:memberEdit.name.trim(),email:memberEdit.email.trim()||null}).eq('id',memberEdit.id);setMsg(r.error?.message||'Member updated.');if(!r.error){setMemberEdit(null);loadFamily(family.id)}}
