@@ -58,11 +58,11 @@ describe('Ledgerly validation', () => {
 describe('Ledgerly EMI and loan calculations', () => {
   it('calculates reducing-balance EMI principal and interest', () => {
     const r = calculateLoan(500000, 10, 36);
-    expect(r.emi).toBeCloseTo(16134.72, 2);
-    expect(r.totalInterest).toBeCloseTo(80849.92, 2);
-    expect(r.totalRepayment).toBeCloseTo(580849.92, 2);
+    expect(r.emi).toBeCloseTo(16133.59, 2);
+    expect(r.totalInterest).toBeCloseTo(80809.37, 2);
+    expect(r.totalRepayment).toBeCloseTo(580809.37, 2);
     expect(r.firstMonthInterest).toBeCloseTo(4166.67, 2);
-    expect(r.firstMonthPrincipal).toBeCloseTo(11968.05, 2);
+    expect(r.firstMonthPrincipal).toBeCloseTo(11966.93, 2);
   });
   it('handles zero-interest EMI without division by zero', () => {
     const r = calculateLoan(120000, 0, 12);
@@ -97,7 +97,7 @@ describe('Ledgerly Excel export', () => {
     expect(xmlText).not.toContain('Test\u0001 Family');
     expect(xmlText).toMatch(/<sheetViews>[\s\S]*<sheetFormatPr[^>]*\/><cols>[\s\S]*<sheetData>/);
     expect(xmlText).toContain('SUM(Income!E2:E1048576)');
-    const ids = [...xmlText.matchAll(/<table[^>]* id="(\d+)"/g)].map(m=>m[1]);
+    const ids = [...xmlText.matchAll(/<table\b[^>]* id="(\d+)"/g)].map(m=>m[1]);
     expect(ids.length).toBeGreaterThan(0);
     expect(new Set(ids).size).toBe(ids.length);
   });
