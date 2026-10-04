@@ -75,7 +75,7 @@ describe('Ledgerly Excel export', () => {
     expect(xmlText).toContain('Raw Transfers Loans');
     expect(xmlText).toContain('<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>');
     expect(xmlText).toContain('<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Aptos"/></font>');
-    expect(xmlText).toContain('<dimension ref="A1:B2"/>');
+    expect(xmlText).toContain('<dimension ref="A1:B13"/>');
     expect(xmlText).not.toContain('Test\u0001 Family');
     expect(xmlText).toMatch(/<sheetViews>[\s\S]*<sheetFormatPr[^>]*\/><cols>[\s\S]*<sheetData>/);
     expect(xmlText).toContain('SUM(Income!E2:E1048576)');
