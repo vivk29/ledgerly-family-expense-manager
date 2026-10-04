@@ -58,7 +58,7 @@ describe('Ledgerly validation', () => {
 describe('Ledgerly Excel export', () => {
   it('builds a valid OOXML zip with unique table ids and expected sheets/formula', () => {
     const bytes = buildLedgerlyXlsx({
-      family:{id:'f1',name:'Test Family'},
+      family:{id:'f1',name:'Test\u0001 Family'},
       members:[{id:'m1',name:'Vivek'}],
       categories:[{id:'c1',name:'Salary',kind:'income'}],
       incomes:[{id:'i1',member_id:'m1',category_id:'c1',amount:1000,income_date:'2026-10-01',description:'Salary'}],
@@ -73,6 +73,11 @@ describe('Ledgerly Excel export', () => {
     expect(xmlText.startsWith('PK')).toBe(true);
     expect(xmlText).toContain('Overview');
     expect(xmlText).toContain('Raw Transfers Loans');
+    expect(xmlText).toContain('<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>');
+    expect(xmlText).toContain('<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Aptos"/></font>');
+    expect(xmlText).toContain('<dimension ref="A1:B2"/>');
+    expect(xmlText).not.toContain('Test\u0001 Family');
+    expect(xmlText).toMatch(/<sheetViews>[\s\S]*<sheetFormatPr[^>]*\/><cols>[\s\S]*<sheetData>/);
     expect(xmlText).toContain('SUM(Income!E2:E1048576)');
     const ids = [...xmlText.matchAll(/<table[^>]* id="(\d+)"/g)].map(m=>m[1]);
     expect(ids.length).toBeGreaterThan(0);
