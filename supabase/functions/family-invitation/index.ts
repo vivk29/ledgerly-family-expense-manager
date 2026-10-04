@@ -57,7 +57,7 @@ export default {
 
       const { data: family, error: familyError } = await ctx.supabase
         .from('families')
-        .select('id,name')
+        .select('id,name,family_code')
         .eq('id', body.familyId)
         .maybeSingle();
 
@@ -105,6 +105,7 @@ export default {
             ledgerly_family_id: member.family_id,
             ledgerly_member_id: member.id,
             ledgerly_family_name: family.name,
+            ledgerly_family_code: family.family_code,
             ledgerly_member_name: member.name,
             ledgerly_invite_new: true,
           },
