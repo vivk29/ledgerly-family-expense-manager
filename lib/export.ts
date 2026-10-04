@@ -63,7 +63,7 @@ function sheetXml(sheet:Sheet,index:number,table?:{ref:string,name:string}){
   const noteRow=sheet.note&&!sheet.rows.length?`<row r="2"><c s="6" t="inlineStr"><is><t>${esc(sheet.note)}</t></is></c></row>`:''; 
   return xml(`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><cols>${cols}</cols>${pane}<sheetData>${body}${noteRow}</sheetData>${note}${tablePart}</worksheet>`);
 }
-function tableXml(ref:string,name:string,headers:string[]){return xml(`<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${name}" displayName="${name}" ref="${ref}"><autoFilter ref="${ref}"/><tableColumns count="${headers.length}">${headers.map((h,i)=>`<tableColumn id="${i+1}" name="${esc(h)}"/>`).join('')}</tableColumns><tableStyleInfo name="TableStyleMedium9" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`)}
+function tableXml(ref:string,name:string,headers:string[],id:number){return xml(`<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="${id}" name="${name}" displayName="${name}" ref="${ref}"><autoFilter ref="${ref}"/><tableColumns count="${headers.length}">${headers.map((h,i)=>`<tableColumn id="${i+1}" name="${esc(h)}"/>`).join('')}</tableColumns><tableStyleInfo name="TableStyleMedium9" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`)}
 
 function workbookFiles(sheets:Sheet[]){
   const files:{name:string;data:string}[]=[];
@@ -79,7 +79,7 @@ function workbookFiles(sheets:Sheet[]){
   files.push({name:'xl/_rels/workbook.xml.rels',data:xml(`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`)});
   files.push({name:'xl/styles.xml',data:stylesXml()});
   ti=0;
-  sheets.forEach((s,i)=>{const n=i+1;let table;let rel='';if(s.rows.length){ti++;const ref=`A1:${colName(s.headers.length)}${s.rows.length+1}`;const tn=tableName(ti);table={ref,name:tn};files.push({name:`xl/tables/table${ti}.xml`,data:tableXml(ref,tn,s.headers)});rel=xml(`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${ti}.xml"/></Relationships>`);files.push({name:`xl/worksheets/_rels/sheet${n}.xml.rels`,data:rel})}files.push({name:`xl/worksheets/sheet${n}.xml`,data:sheetXml(s,n,table)})});
+  sheets.forEach((s,i)=>{const n=i+1;let table;let rel='';if(s.rows.length){ti++;const ref=`A1:${colName(s.headers.length)}${s.rows.length+1}`;const tn=tableName(ti);table={ref,name:tn};files.push({name:`xl/tables/table${ti}.xml`,data:tableXml(ref,tn,s.headers,ti)});rel=xml(`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${ti}.xml"/></Relationships>`);files.push({name:`xl/worksheets/_rels/sheet${n}.xml.rels`,data:rel})}files.push({name:`xl/worksheets/sheet${n}.xml`,data:sheetXml(s,n,table)})});
   return files;
 }
 
