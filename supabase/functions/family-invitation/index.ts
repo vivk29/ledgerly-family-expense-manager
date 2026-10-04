@@ -64,25 +64,84 @@ export default {
       if (familyError) return json({ error: familyError.message }, 400);
       if (!family) return json({ error: 'Family not found.' }, 404);
 
-      // Ledgerly invitations use the same Supabase magic-link flow as sign-in.
-      // The browser sends the magic link after this endpoint validates the member.
-      // We only record the invitation timestamp here; we deliberately do not call
-      // auth.admin.inviteUserByEmail(), so the invitation does not depend on the
-      // separate Supabase invitation-email configuration.
-      const { error: markInviteError } = await ctx.supabaseAdmin
+      const siteUrl = Deno.env.get('LEDGERLY_SITE_URL') || 'https://ledgerly-family-expense-manager-fix.vercel.app';
+
+      // Existing confirmed accounts cannot use inviteUserByEmail(). They receive
+      // a one-time sign-in link, then Ledgerly immediately takes them to the
+      // normal password-login screen. New accounts use Supabase's invitation
+      // email and complete registration from the invitation.
+      const { data: userPage, error: userLookupError } =
+        await ctx.supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+
+      if (userLookupError) return json({ error: userLookupError.message }, 400);
+
+      const existingUser = (userPage?.users ?? []).find(
+        (candidate: { email?: string | null }) =>
+          String(candidate.email ?? '').trim().toLowerCase() === normalizedEmail,
+      );
+
+      if (existingUser) {
+        const { error: markInviteError } = await ctx.supabaseAdmin
+          .from('family_members')
+          .update({ invited_at: new Date().toISOString() })
+          .eq('id', member.id)
+          .eq('family_id', member.family_id);
+
+        if (markInviteError) return json({ error: markInviteError.message }, 400);
+
+        return json({
+          ok: true,
+          existingAccount: true,
+          memberId: member.id,
+          email: normalizedEmail,
+          familyId: family.id,
+          message: 'Invitation prepared. Send a sign-in link to this email.',
+        });
+      }
+
+      const { data: invited, error: inviteError } =
+        await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(normalizedEmail, {
+          data: {
+            ledgerly_family_id: member.family_id,
+            ledgerly_member_id: member.id,
+            ledgerly_family_name: family.name,
+            ledgerly_member_name: member.name,
+            ledgerly_invite_new: true,
+          },
+          redirectTo: siteUrl + '/?invite_member_id=' + encodeURIComponent(member.id),
+        });
+
+      if (inviteError) {
+        const message = inviteError.message || 'Could not send the invitation.';
+        if (/already.*registered|already.*exists|already.*confirmed/i.test(message)) {
+          return json({
+            ok: true,
+            existingAccount: true,
+            memberId: member.id,
+            email: normalizedEmail,
+            familyId: family.id,
+            message: 'Existing Ledgerly account found.',
+          });
+        }
+        return json({ error: message }, 400);
+      }
+
+      const { error: updateError } = await ctx.supabaseAdmin
         .from('family_members')
         .update({ invited_at: new Date().toISOString() })
         .eq('id', member.id)
         .eq('family_id', member.family_id);
 
-      if (markInviteError) return json({ error: markInviteError.message }, 400);
+      if (updateError) return json({ error: updateError.message }, 400);
 
       return json({
         ok: true,
+        existingAccount: false,
         memberId: member.id,
         email: normalizedEmail,
         familyId: family.id,
-        message: 'Invitation validated. Send a Ledgerly magic link to this email.',
+        userId: invited?.user?.id ?? null,
+        message: 'Invitation sent.',
       });
     }
 
