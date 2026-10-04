@@ -3,6 +3,7 @@ import { allocateExpense } from '../lib/split';
 import { minimizeTransfers } from '../lib/settlement';
 import { validateDifferentMembers, validateSettlementPayment } from '../lib/validators';
 import { buildLedgerlyXlsx } from '../lib/export';
+import { calculateLoan } from '../lib/loan';
 
 describe('Ledgerly split allocation', () => {
   it('splits ₹100 equally across 3 members with exact paise', () => {
@@ -51,6 +52,23 @@ describe('Ledgerly validation', () => {
   it('rejects transfers or loans between the same member', () => {
     expect(()=>validateDifferentMembers('a','a')).toThrow();
     expect(()=>validateDifferentMembers('a','b')).not.toThrow();
+  });
+});
+
+describe('Ledgerly EMI and loan calculations', () => {
+  it('calculates reducing-balance EMI principal and interest', () => {
+    const r = calculateLoan(500000, 10, 36);
+    expect(r.emi).toBeCloseTo(16134.72, 2);
+    expect(r.totalInterest).toBeCloseTo(80849.92, 2);
+    expect(r.totalRepayment).toBeCloseTo(580849.92, 2);
+    expect(r.firstMonthInterest).toBeCloseTo(4166.67, 2);
+    expect(r.firstMonthPrincipal).toBeCloseTo(11968.05, 2);
+  });
+  it('handles zero-interest EMI without division by zero', () => {
+    const r = calculateLoan(120000, 0, 12);
+    expect(r.emi).toBe(10000);
+    expect(r.totalInterest).toBe(0);
+    expect(r.totalRepayment).toBe(120000);
   });
 });
 
