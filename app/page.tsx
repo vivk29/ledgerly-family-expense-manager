@@ -43,7 +43,7 @@ export default function Home(){
    const bundle=await fetchExportBundle(supabase,family.id,session.user.email||'N/A');
    await downloadLedgerlyWorkbook(bundle);
    setMsg('Ledgerly Excel export downloaded successfully.');
-  }catch(error:any){setMsg(error?.message?\`Could not generate export: \${error.message}\`:'Could not generate export.');}
+  }catch(error:any){setMsg(error?.message?`Could not generate export: ${error.message}`:'Could not generate export.');}
   finally{setLoading(false);}
  }
  function chooseFamily(f:any){setFamily(f);localStorage.setItem('ledgerly_family_id',f.id);setMenu(false);loadFamily(f.id);setScreen('home')}
