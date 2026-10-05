@@ -28,6 +28,8 @@ jobs:
         run: npm ci
       - name: TypeScript validation
         run: npm run typecheck
+      - name: Feature marker verification
+        run: node scripts/check-feature-markers.mjs
       - name: Financial unit tests
         run: npm test
       - name: Production build

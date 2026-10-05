@@ -1,0 +1,26 @@
+name: Ledgerly authenticated E2E
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright
+        run: npx --yes @playwright/test@1.55.0 install --with-deps chromium
+      - name: Run authenticated E2E
+        env:
+          LEDGERLY_E2E_BASE_URL: https://ledgerly-family-expense-manager-fix.vercel.app
+          LEDGERLY_E2E_USER_A_EMAIL: ${{ secrets.LEDGERLY_E2E_USER_A_EMAIL }}
+          LEDGERLY_E2E_USER_A_PASSWORD: ${{ secrets.LEDGERLY_E2E_USER_A_PASSWORD }}
+          LEDGERLY_E2E_USER_B_EMAIL: ${{ secrets.LEDGERLY_E2E_USER_B_EMAIL }}
+          LEDGERLY_E2E_USER_B_PASSWORD: ${{ secrets.LEDGERLY_E2E_USER_B_PASSWORD }}
+          LEDGERLY_E2E_FAMILY_PIN: ${{ secrets.LEDGERLY_E2E_FAMILY_PIN }}
+        run: npx --yes @playwright/test@1.55.0 test e2e/authenticated-family.spec.cjs
